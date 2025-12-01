@@ -163,7 +163,7 @@ def spanish_to_syllable_like_chunks(text: str) -> List[str]:
 
 @app.get("/languages")
 async def list_languages():
-    """Returns supported languages."""
+    """Returns supported languages (Spanish-only service)."""
     return [
         {
             "code": "es",
