@@ -20,7 +20,7 @@ MAX_SECONDS_SENTENCE = 10
 MAX_SAMPLES_SENTENCE = TARGET_SR * MAX_SECONDS_SENTENCE
 
 # Spanish CTC model
-MODEL_NAME = "jonatasgrosman/wav2vec2-large-xlsr-53-spanish"
+MODEL_NAME = "jonatasgrosman/wav2vec2-xls-r-1b-spanish"
 
 processor = Wav2Vec2Processor.from_pretrained(MODEL_NAME)
 model = Wav2Vec2ForCTC.from_pretrained(MODEL_NAME)
