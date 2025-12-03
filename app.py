@@ -277,9 +277,30 @@ async def phonemes(
             ipa_units = text_to_ipa_units(cleaned)
             base44_units = ipa_to_base44_units_str(ipa_units)
 
-        return JSONResponse(
+                return JSONResponse(
             content={
                 "lang": "es",
                 "phonemes": spaced_chunks,
                 "ipa_units": ipa_units,
                 "base44": base44_units,
+                "raw_transcription": transcription,
+                "model": MODEL_NAME,
+            }
+        )
+@app.get("/test-ipa")
+async def test_ipa():
+    try:
+        text = "caja"
+        ipa_units = text_to_ipa_units(text)
+        base44_units = ipa_to_base44_units_str(ipa_units)
+        return {
+            "ok": True,
+            "text": text,
+            "ipa_units": ipa_units,
+            "base44": base44_units,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": str(e),
+        }
