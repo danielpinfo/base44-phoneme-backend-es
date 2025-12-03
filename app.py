@@ -7,6 +7,7 @@ import torchaudio
 import soundfile as sf
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 from phonemizer import phonemize
 from base44_mapper import ipa_to_base44_units_str
@@ -16,6 +17,14 @@ torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
 app = FastAPI(title="Base44 Spanish wav2vec2 Backend (Sharpened)")
+# Allow frontend to call this API from the browser
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # you can later restrict this to your domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 TARGET_SR = 16000
 MAX_SECONDS_SENTENCE = 10
