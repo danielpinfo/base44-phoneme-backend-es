@@ -1,6 +1,6 @@
 # ============================
 #  UNIVERSAL BASE44 MAPPER
-#  STRING-BASED VERSION
+#  STRING-BASED VERSION (SAFE)
 # ============================
 
 IPA_TO_BASE44 = {
@@ -78,7 +78,7 @@ IPA_TO_BASE44 = {
 }
 
 
-def ipa_to_base44_units(ipa_units):
+def ipa_to_base44_units_str(ipa_units):
     """
     ipa_units: list of strings like ['ˈka', 'xa']
     returns: list of Base44 symbols like ['K', 'J']
@@ -87,7 +87,6 @@ def ipa_to_base44_units(ipa_units):
     for unit in ipa_units:
         if not isinstance(unit, str):
             unit = str(unit)
-
         clean = unit.replace("ˈ", "").replace(".", "")
         out.append(IPA_TO_BASE44.get(clean, "?"))
     return out
