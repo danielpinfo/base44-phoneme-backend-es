@@ -9,6 +9,8 @@ import soundfile as sf
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.responses import JSONResponse
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
+from base44_mapper import ipa_to_base44_units_str
+
 
 # Keep it light on small CPU instances
 torch.set_num_threads(1)
@@ -273,6 +275,7 @@ async def phonemes(
 
             # NEW: real IPA units via phonemizer + espeak-ng
             ipa_units = text_to_ipa_units(cleaned)
+base44_units = ipa_to_base44_units_str(ipa_units)
 
             # NEW: Base44 from IPA
             base44_units = ipa_to_base44_units(ipa_units)
@@ -301,7 +304,7 @@ async def test_ipa():
     try:
         text = "caja"
         ipa_units = text_to_ipa_units(text)
-        base44_units = ipa_to_base44_units(ipa_units)
+        base44_units = ipa_to_base44_units_str(ipa_units)
         return {
             "ok": True,
             "text": text,
@@ -313,5 +316,6 @@ async def test_ipa():
             "ok": False,
             "error": str(e),
         }
+
 
 
