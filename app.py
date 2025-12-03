@@ -1,5 +1,6 @@
 import io
 import re
+from phonemizer import phonemize
 from typing import List
 
 import torch
@@ -160,6 +161,35 @@ def spanish_to_syllable_like_chunks(text: str) -> List[str]:
 
     return chunks
 
+def text_to_ipa_units(text: str) -> List[str]:
+    """
+    Real IPA for Spanish using espeak-ng via phonemizer.
+    Example: 'caja' -> ['ˈka', 'xa']
+    """
+    if not text:
+        return []
+
+    ipa = phonemize(
+        text,
+        language="es",
+        backend="espeak",
+        strip=True,
+        with_stress=True,
+        preserve_punctuation=False,
+        separator=" "
+    )
+
+    raw_units = ipa.split()
+    units: List[str] = []
+
+    for unit in raw_units:
+        # split on syllable dots
+        pieces = unit.split(".")
+        for p in pieces:
+            if p:
+                units.append(p)
+
+    return units
 
 @app.get("/languages")
 async def list_languages():
@@ -228,19 +258,29 @@ async def phonemes(
             transcription = decoded[0].strip() if decoded else ""
             transcription = cleanup_spanish_transcription(transcription)
 
-            cleaned = "".join(ch for ch in transcription if ch.isalpha() or ch == "'")
+                       cleaned = "".join(ch for ch in transcription if ch.isalpha() or ch == "'")
 
+            # Old grapheme chunks (you can still use these in UI if you want)
             chunks = spanish_to_syllable_like_chunks(cleaned)
             spaced_chunks = " ".join(chunks) if chunks else ""
+
+            # NEW: real IPA units from espeak-ng via phonemizer
+            ipa_units = text_to_ipa_units(cleaned)
+
+            # NEW: Base44 from real IPA
+            base44_units = ipa_to_base44_units(ipa_units)
 
         return JSONResponse(
             content={
                 "lang": "es",
-                "phonemes": spaced_chunks,
+                "phonemes": spaced_chunks,      # old grapheme chunks
+                "ipa_units": ipa_units,         # NEW: real IPA
+                "base44": base44_units,         # NEW: Base44 from IPA
                 "raw_transcription": transcription,
                 "model": MODEL_NAME,
             }
         )
+
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Phoneme recognition failed: {e}")
