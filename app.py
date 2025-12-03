@@ -38,18 +38,14 @@ def trim_silence(
     sr: int,
     threshold: float = 0.01,
 ) -> torch.Tensor:
-    """
-    Remove leading/trailing silence using a simple amplitude threshold.
-    """
     if waveform.ndim != 1:
         waveform = waveform.view(-1)
 
     audio_np = waveform.numpy()
-    energy = (audio_np ** 2) ** 0.5  # magnitude
+    energy = (audio_np ** 2) ** 0.5
 
     voiced = (energy > threshold).nonzero()[0]
     if len(voiced) == 0:
-        # all silence – just return a short chunk to avoid empty tensors
         return waveform[: sr // 10]
 
     start = int(voiced[0])
@@ -63,9 +59,6 @@ def trim_silence(
 
 
 def normalize_volume(waveform: torch.Tensor) -> torch.Tensor:
-    """
-    Normalize waveform so max absolute value is ~1.0.
-    """
     max_val = waveform.abs().max()
     if max_val > 0:
         waveform = waveform / max_val
@@ -73,10 +66,6 @@ def normalize_volume(waveform: torch.Tensor) -> torch.Tensor:
 
 
 def load_and_resample_to_16k(wav_bytes: bytes) -> torch.Tensor:
-    """
-    Load WAV bytes, mono-ize, trim silence, normalize volume, resample to 16k,
-    and cap to max length.
-    """
     with io.BytesIO(wav_bytes) as buf:
         audio, sr = sf.read(buf, dtype="float32")
 
@@ -106,14 +95,8 @@ def load_and_resample_to_16k(wav_bytes: bytes) -> torch.Tensor:
 
 
 def cleanup_spanish_transcription(text: str) -> str:
-    """
-    Light cleanup to reduce 'sloppy' noise in Spanish transcriptions.
-    - Lowercases
-    - Collapses 3+ repeated consonants into 2 (e.g., 'holaaaa' -> 'holaa')
-    """
     text = text.lower()
 
-    # Collapse 3+ repeated consonants to 2
     def _collapse(match):
         ch = match.group(1)
         return ch * 2
@@ -123,12 +106,6 @@ def cleanup_spanish_transcription(text: str) -> str:
 
 
 def spanish_to_syllable_like_chunks(text: str) -> List[str]:
-    """
-    Very simple syllable-ish chunker for Spanish:
-    - Groups consonant(s) + following vowel(s) together.
-    - Example: 'mañana' -> ['ma', 'ña', 'na']
-    Not perfect linguistic segmentation — practical for Base44 phoneme UI.
-    """
     if not text:
         return []
 
@@ -143,9 +120,7 @@ def spanish_to_syllable_like_chunks(text: str) -> List[str]:
         ch = chars[i]
         current += ch
 
-        # If this char is a vowel, chunk boundary
         if ch in SPANISH_VOWELS:
-            # Look ahead for diphthong / vowel clusters
             j = i + 1
             while j < n and chars[j] in SPANISH_VOWELS:
                 current += chars[j]
@@ -164,10 +139,6 @@ def spanish_to_syllable_like_chunks(text: str) -> List[str]:
 
 
 def text_to_ipa_units(text: str) -> List[str]:
-    """
-    Real IPA for Spanish using espeak-ng via phonemizer.
-    Example: 'caja' -> ['ˈka', 'xa']
-    """
     if not text:
         return []
 
@@ -185,7 +156,6 @@ def text_to_ipa_units(text: str) -> List[str]:
     units: List[str] = []
 
     for unit in raw_units:
-        # split on syllable dots
         pieces = unit.split(".")
         for p in pieces:
             if p:
@@ -196,7 +166,6 @@ def text_to_ipa_units(text: str) -> List[str]:
 
 @app.get("/languages")
 async def list_languages():
-    """Returns supported languages (Spanish-only service)."""
     return [
         {
             "code": "es",
@@ -211,7 +180,6 @@ async def list_languages():
 async def get_practice_words(
     lang: str = Query("es", description="Language code: es"),
 ):
-    """Simple Spanish practice words."""
     if lang != "es":
         raise HTTPException(status_code=400, detail=f"Unsupported language '{lang}'")
 
@@ -230,13 +198,6 @@ async def phonemes(
     file: UploadFile = File(...),
     lang: str = Query("es", description="Language code: es"),
 ):
-    """
-    Accepts a WAV file (16k preferred) and returns:
-    - Spanish transcription
-    - Syllable-like 'phoneme' segmentation
-    - Real IPA units
-    - Base44 units
-    """
     if lang != "es":
         raise HTTPException(status_code=400, detail=f"Unsupported language '{lang}'")
 
@@ -269,15 +230,13 @@ async def phonemes(
 
             cleaned = "".join(ch for ch in transcription if ch.isalpha() or ch == "'")
 
-            # Old grapheme chunks (optional, still useful for UI)
             chunks = spanish_to_syllable_like_chunks(cleaned)
             spaced_chunks = " ".join(chunks) if chunks else ""
 
-            # Real IPA units + Base44
             ipa_units = text_to_ipa_units(cleaned)
             base44_units = ipa_to_base44_units_str(ipa_units)
 
-                return JSONResponse(
+        return JSONResponse(
             content={
                 "lang": "es",
                 "phonemes": spaced_chunks,
@@ -287,20 +246,6 @@ async def phonemes(
                 "model": MODEL_NAME,
             }
         )
-@app.get("/test-ipa")
-async def test_ipa():
-    try:
-        text = "caja"
-        ipa_units = text_to_ipa_units(text)
-        base44_units = ipa_to_base44_units_str(ipa_units)
-        return {
-            "ok": True,
-            "text": text,
-            "ipa_units": ipa_units,
-            "base44": base44_units,
-        }
+
     except Exception as e:
-        return {
-            "ok": False,
-            "error": str(e),
-        }
+        raise HTTPException(status_code=500, detail=f"Phoneme recognition failed: {e}")
