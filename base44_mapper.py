@@ -1,6 +1,6 @@
 # ============================
 #  UNIVERSAL BASE44 MAPPER
-#  FINAL VERSION
+#  STRING-BASED VERSION
 # ============================
 
 IPA_TO_BASE44 = {
@@ -25,7 +25,7 @@ IPA_TO_BASE44 = {
     "z": "Z",
     "ʃ": "SH",
     "ʒ": "ZH",
-    "x": "J",       # Spanish "j" = velar fricative
+    "x": "J",       # Spanish "j"
     "h": "H",
 
     # ----- Nasals -----
@@ -78,9 +78,16 @@ IPA_TO_BASE44 = {
 }
 
 
-def ipa_to_base44_units(ipa_units: list[str]) -> list[str]:
+def ipa_to_base44_units(ipa_units):
+    """
+    ipa_units: list of strings like ['ˈka', 'xa']
+    returns: list of Base44 symbols like ['K', 'J']
+    """
     out = []
     for unit in ipa_units:
+        if not isinstance(unit, str):
+            unit = str(unit)
+
         clean = unit.replace("ˈ", "").replace(".", "")
         out.append(IPA_TO_BASE44.get(clean, "?"))
     return out
