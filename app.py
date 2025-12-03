@@ -1,6 +1,5 @@
 import io
 import re
-from phonemizer import phonemize
 from typing import List
 
 import torch
@@ -9,8 +8,8 @@ import soundfile as sf
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.responses import JSONResponse
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
+from phonemizer import phonemize
 from base44_mapper import ipa_to_base44_units_str
-
 
 # Keep it light on small CPU instances
 torch.set_num_threads(1)
@@ -163,6 +162,7 @@ def spanish_to_syllable_like_chunks(text: str) -> List[str]:
 
     return chunks
 
+
 def text_to_ipa_units(text: str) -> List[str]:
     """
     Real IPA for Spanish using espeak-ng via phonemizer.
@@ -192,6 +192,7 @@ def text_to_ipa_units(text: str) -> List[str]:
                 units.append(p)
 
     return units
+
 
 @app.get("/languages")
 async def list_languages():
@@ -232,9 +233,9 @@ async def phonemes(
     """
     Accepts a WAV file (16k preferred) and returns:
     - Spanish transcription
-    - Grapheme 'phoneme' segmentation
-    - Real IPA units (via phonemizer + espeak-ng)
-    - Base44 from IPA
+    - Syllable-like 'phoneme' segmentation
+    - Real IPA units
+    - Base44 units
     """
     if lang != "es":
         raise HTTPException(status_code=400, detail=f"Unsupported language '{lang}'")
@@ -266,56 +267,19 @@ async def phonemes(
             transcription = decoded[0].strip() if decoded else ""
             transcription = cleanup_spanish_transcription(transcription)
 
-            # Keep only letters and apostrophes
             cleaned = "".join(ch for ch in transcription if ch.isalpha() or ch == "'")
 
-            # Old grapheme chunks (for UI if you want)
+            # Old grapheme chunks (optional, still useful for UI)
             chunks = spanish_to_syllable_like_chunks(cleaned)
             spaced_chunks = " ".join(chunks) if chunks else ""
 
-            # NEW: real IPA units via phonemizer + espeak-ng
+            # Real IPA units + Base44
             ipa_units = text_to_ipa_units(cleaned)
-base44_units = ipa_to_base44_units_str(ipa_units)
-
-            # NEW: Base44 from IPA
-            base44_units = ipa_to_base44_units(ipa_units)
+            base44_units = ipa_to_base44_units_str(ipa_units)
 
         return JSONResponse(
             content={
                 "lang": "es",
-                "phonemes": spaced_chunks,       # grapheme chunks (ma, ña, na)
-                "ipa_units": ipa_units,          # real IPA units
-                "base44": base44_units,          # Base44 mapped from IPA
-                "raw_transcription": transcription,
-                "model": MODEL_NAME,
-            }
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Phoneme recognition failed: {e}")
-
-
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Phoneme recognition failed: {e}")
-
-@app.get("/test-ipa")
-async def test_ipa():
-    try:
-        text = "caja"
-        ipa_units = text_to_ipa_units(text)
-        base44_units = ipa_to_base44_units_str(ipa_units)
-        return {
-            "ok": True,
-            "text": text,
-            "ipa_units": ipa_units,
-            "base44": base44_units,
-        }
-    except Exception as e:
-        return {
-            "ok": False,
-            "error": str(e),
-        }
-
-
-
+                "phonemes": spaced_chunks,
+                "ipa_units": ipa_units,
+                "base44": base44_units,
