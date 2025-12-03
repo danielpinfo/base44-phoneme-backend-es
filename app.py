@@ -230,13 +230,19 @@ async def phonemes(
     """
     Accepts a WAV file (16k preferred) and returns:
     - Spanish transcription
-    - Syllable-like 'phoneme' segmentation
+    - Grapheme 'phoneme' segmentation
+    - Real IPA units (via phonemizer + espeak-ng)
+    - Base44 from IPA
     """
     if lang != "es":
         raise HTTPException(status_code=400, detail=f"Unsupported language '{lang}'")
 
     if file.content_type not in (
-        "audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave", None
+        "audio/wav",
+        "audio/x-wav",
+        "audio/wave",
+        "audio/vnd.wave",
+        None,
     ):
         raise HTTPException(
             status_code=400,
@@ -258,28 +264,33 @@ async def phonemes(
             transcription = decoded[0].strip() if decoded else ""
             transcription = cleanup_spanish_transcription(transcription)
 
-                       cleaned = "".join(ch for ch in transcription if ch.isalpha() or ch == "'")
+            # Keep only letters and apostrophes
+            cleaned = "".join(ch for ch in transcription if ch.isalpha() or ch == "'")
 
-            # Old grapheme chunks (you can still use these in UI if you want)
+            # Old grapheme chunks (for UI if you want)
             chunks = spanish_to_syllable_like_chunks(cleaned)
             spaced_chunks = " ".join(chunks) if chunks else ""
 
-            # NEW: real IPA units from espeak-ng via phonemizer
+            # NEW: real IPA units via phonemizer + espeak-ng
             ipa_units = text_to_ipa_units(cleaned)
 
-            # NEW: Base44 from real IPA
+            # NEW: Base44 from IPA
             base44_units = ipa_to_base44_units(ipa_units)
 
         return JSONResponse(
             content={
                 "lang": "es",
-                "phonemes": spaced_chunks,      # old grapheme chunks
-                "ipa_units": ipa_units,         # NEW: real IPA
-                "base44": base44_units,         # NEW: Base44 from IPA
+                "phonemes": spaced_chunks,       # grapheme chunks (ma, ña, na)
+                "ipa_units": ipa_units,          # real IPA units
+                "base44": base44_units,          # Base44 mapped from IPA
                 "raw_transcription": transcription,
                 "model": MODEL_NAME,
             }
         )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Phoneme recognition failed: {e}")
+
 
 
     except Exception as e:
