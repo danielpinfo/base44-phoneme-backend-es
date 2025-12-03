@@ -298,12 +298,20 @@ async def phonemes(
 
 @app.get("/test-ipa")
 async def test_ipa():
-    text = "caja"
-    ipa_units = text_to_ipa_units(text)
-    base44_units = ipa_to_base44_units(ipa_units)
-    return {
-        "text": text,
-        "ipa_units": ipa_units,
-        "base44": base44_units,
-    }
+    try:
+        text = "caja"
+        ipa_units = text_to_ipa_units(text)
+        base44_units = ipa_to_base44_units(ipa_units)
+        return {
+            "ok": True,
+            "text": text,
+            "ipa_units": ipa_units,
+            "base44": base44_units,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": str(e),
+        }
+
 
