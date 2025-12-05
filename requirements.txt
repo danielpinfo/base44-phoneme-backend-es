@@ -8,3 +8,4 @@ python-multipart
 protobuf==3.20.3
 phonemizer
 phonemizer
+phonemizer==3.2.1
