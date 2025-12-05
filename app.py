@@ -148,25 +148,36 @@ def spanish_to_syllable_like_chunks(text: str) -> List[str]:
 
 
 def text_to_ipa_units(text: str) -> List[str]:
+    """
+    Real IPA for Spanish using phonemizer.
+
+    IMPORTANT:
+    - If phonemizer / espeak is not available, this will NOT crash the server.
+    - It will log the error and return [] so the /phonemes endpoint still succeeds.
+    """
     if not text:
         return []
 
-    ipa = phonemize(
-        text,
-        language="es",
-        backend="espeak",
-        strip=True,
-        with_stress=True,
-        preserve_punctuation=False,
-        separator=" "
-    )
+    try:
+        ipa = phonemize(
+            text,
+            language="es",
+            backend="espeak",  # or "espeak-ng" depending on your env
+            strip=True,
+            with_stress=True,
+            preserve_punctuation=False,
+            separator=" "
+        )
+    except Exception as e:
+        # Don't crash the whole endpoint if IPA fails
+        print(f"[SPANISH IPA] phonemizer failed for '{text}': {e}")
+        return []
 
     raw_units = ipa.split()
     units: List[str] = []
 
     for unit in raw_units:
-        pieces = unit.split(".")
-        for p in pieces:
+        for p in unit.split("."):
             if p:
                 units.append(p)
 
